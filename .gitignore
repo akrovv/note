@@ -1,0 +1,10 @@
+.DS_Store
+
+*.out
+*.exe
+*.o
+*.mod
+*.sum
+
+.gitlab-ci.yml
+tests

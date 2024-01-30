@@ -1,0 +1,38 @@
+run:
+  deadline: 1m
+  tests: true
+
+linters-settings:
+  cyclop:
+    max-complexity: 15
+  govet:
+    check-shadowing: true
+    
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - asciicheck
+    - contextcheck
+    - cyclop
+    - dupword
+    - errname
+    - execinquery
+    - exportloopref
+    - goconst 
+    - godot
+    - gomnd
+    - musttag
+    - nilerr
+    - reassign
+    - sqlclosecheck
+    - unconvert
+    
+
+output:
+  format: colored-line-number

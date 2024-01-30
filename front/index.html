@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            display: flex;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 300px;
+            background-color: #3498db;
+            color: #fff;
+            padding: 20px;
+            min-width: 200px;
+        }
+
+        #result {
+            flex: 1;
+            width: 250px;
+            padding: 10%;
+        }
+
+        button, input, textarea {
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 20px);
+        }
+
+        button {
+            background-color: #3498db;
+            color: #fff;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #notification {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            z-index: 1000;
+        }
+
+        #notification.success {
+            background-color: #2ecc71;
+        }
+
+        #notification.error {
+            background-color: #e74c3c;
+        }
+
+        .frame {
+           border: 1px solid #fff; 
+           margin-bottom: 5px;
+           text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="frame">
+                <button id="get-all">Show notes</button>
+                sort by:
+                <select id="select-sort">
+                    <option id="radio-sort-by-id">id</option>
+                    <option id="radio-sort-by-text">text</option>
+                    <option id="radio-sort-by-created">created_at</option>
+                    <option id="radio-sort-by-updated">updated_at</option>
+                </select>
+            </div>
+
+            <div class="frame">
+                <textarea name="text" id="text-create-note" placeholder="Input text for note"></textarea>
+                <button id="create">Create a note</button>
+            </div>
+    
+            <div class="frame">
+                <input id="note-get-id" type="text" placeholder="id">
+                <button id="get-by-id">Get a note</button>
+            </div>
+    
+            <div class="frame">
+                <input id="note-del-id" type="text" placeholder="id">
+                <button id="delete-by-id">Delete a note</button>
+            </div>
+    
+            <div class="frame">
+                <textarea name="text" id="text-update-note" placeholder="Input text for note"></textarea>
+                <input id="note-update-id" type="text" placeholder="id">
+                <button id="update">Update a note</button>
+            </div>
+        </div>
+
+        <div id="result"></div>
+        <div id="notification"></div>
+    </div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+<script>
+    function displayResult(data, error) {
+        var resultElement = document.getElementById("result");
+        console.log(data)
+
+        if (error != null) {
+            console.log(data)
+            resultElement.innerHTML = "<h3>Error:</h3><br><span style='display:block'>Status: " + data.status + "</span><span style='display:block'>ResponseText: " + data.responseText + "</span>"
+            return
+        }
+    
+        if (Array.isArray(data)) {
+            resultElement.innerHTML = "<h3>Notes:</h3><br><span style='overflow: scroll; display: block; height: 300px;'" +
+                data.map(function(note) {
+                    return "<p style='overflow-wrap: break-word; border: 1px solid #3498db;'><p style='overflow-wrap: break-word;'>ID: " +
+                        note.id + "</p><p style='overflow-wrap: break-word;'>Text: " + note.text + "</p></p>";
+                }).join("") + "</span>";
+        } else if (typeof data === "object" && data !== null) {
+            if ("response" in data) {
+                resultElement.innerHTML = "<p style='overflow-wrap: break-word;'>Response: " + data.response + "</p>";
+            } else {
+                resultElement.innerHTML = "<h3>Note:</h3>" +
+                    "<p style='overflow-wrap: break-word;'>ID: " + data.id + "</p>" +
+                    "<p style='overflow-wrap: break-word;'>Text: " + data.text + "</p>";
+            }
+        } else {
+            resultElement.textContent = data;
+        }
+    }
+
+    function displayNotification(message, type) {
+        var notificationElement = document.getElementById("notification");
+        notificationElement.textContent = message;
+        notificationElement.className = type;
+        notificationElement.style.display = "block";
+
+        setTimeout(function() {
+            notificationElement.style.display = "none";
+        }, 3000);
+    }
+
+    function sendAjax(type, url, data) {
+        var ajaxConfig = {
+            type: type,
+            url: url,
+            success: function(response) {
+                displayResult(response);
+                displayNotification("Success!", "success");
+            },
+            error: function(response) {
+                displayResult(response, "error")
+                displayNotification("Error!", "error");
+            }
+        };
+    
+        if (data !== null) {
+            ajaxConfig.data = data;
+            ajaxConfig.contentType = "application/json";
+        }
+    
+        $.ajax(ajaxConfig);
+    }
+
+    const btnShowAll = document.querySelector("#get-all").addEventListener('click', () => {
+        const url = 'http://localhost:8080/note?order_by=';
+        var sortID = document.getElementById("select-sort");
+
+        if (sortID === null) {
+            displayNotification("can't find #select-sort", "error")
+            return
+        }
+
+        var sortValue = sortID.value.trim();
+
+        if (sortValue.length === 0) {
+            displayNotification("zero len for sort", "error")
+            return
+        }
+
+        sendAjax("GET", url+sortValue, null)
+    })
+
+    const btnUpdateById = document.querySelector("#update").addEventListener('click', () => {
+        const url = 'http://localhost:8080/note/';
+        var textForUpdate = document.getElementById("text-update-note");
+        if (textForUpdate === null) {
+            displayNotification("can't find #text-update-note", "error")
+            return
+        }
+
+        var valueString = textForUpdate.value.trim();
+
+        if (valueString.length === 0) {
+            displayNotification("zero len for note's text", "error")
+            return
+        }
+
+        var updateID = document.getElementById("note-update-id");
+
+        if (updateID === null) {
+            displayNotification("can't find #note-update-id", "error")
+            return
+        }
+
+        var valueID = updateID.value.trim();
+
+        if (valueID.length === 0) {
+            displayNotification("zero len for id", "error")
+            return
+        }
+
+        if (isNaN(valueID)) { 
+            displayNotification("id contains not number's values", "error")
+            return
+        }
+
+        var jsonData = {
+            text: valueString
+        };
+
+        sendAjax("PUT", url + valueID, JSON.stringify(jsonData))
+    })
+
+    const btnDelById = document.querySelector("#delete-by-id").addEventListener('click', () => {
+        const url = 'http://localhost:8080/note/';
+        var deleteID = document.getElementById("note-del-id");
+
+        if (deleteID === null) {
+            displayNotification("can't find #note-del-id", "error")
+            return
+        }
+
+        var valueID = deleteID.value.trim();
+
+        if (valueID.length === 0) {
+            displayNotification("zero len for id", "error")
+            return
+        }
+
+        if (isNaN(valueID)) { 
+            displayNotification("id contains not number's values", "error")
+            return
+        }
+
+        sendAjax("DELETE", url + valueID, null)
+    })
+
+    const btnGetById = document.querySelector("#get-by-id").addEventListener('click', () => {
+        const url = 'http://localhost:8080/note/';
+        var getID = document.getElementById("note-get-id");
+
+        if (getID === null) {
+            displayNotification("can't find #note-get-id", "error")
+            return
+        }
+
+        var valueID = getID.value.trim();
+
+        if (valueID.length === 0) {
+            displayNotification("zero len for id", "error")
+            return
+        }
+
+        if (isNaN(valueID)) { 
+            displayNotification("id contains not number's values", "error")
+            return
+        }
+
+        sendAjax("GET", url + valueID, null)
+    })
+    
+    const btnCreate = document.querySelector("#create").addEventListener('click', () => {
+        const url = 'http://localhost:8080/note';
+        var textForCreate = document.getElementById("text-create-note");
+
+        if (textForCreate === null) {
+            displayNotification("can't find #text-create-note", "error")
+            return
+        }
+
+        var valueString = textForCreate.value.trim()
+
+        if (valueString.length === 0) {
+            displayNotification("zero len for note", "error")
+            return
+        }
+
+        var jsonData = {
+            text: valueString
+        };
+    
+        sendAjax("POST", url, JSON.stringify(jsonData))
+    })
+</script>
+</html>
